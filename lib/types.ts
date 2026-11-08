@@ -22,6 +22,6 @@ export type TestCase = { id?: string; input: string; expected_output: string; is
 export type JudgeResult = { submissionId?: string; verdict: Verdict; message?: string; errorMessage?: string | null; executionTimeMs?: number | null; cases?: Array<{ index: number; passed: boolean; input?: string; expectedOutput?: string; actualOutput?: string; executionTimeMs?: number; message?: string }> };
 
 export const STARTER_CODE: Record<Language, string> = {
-  python: "import sys\n\ndef solve():\n    data = sys.stdin.read().strip().split()\n    # Write your solution here\n\nif __name__ == \"__main__\":\n    solve()\n",
+  python: "def solve():\n    # Write your solution here\n    pass\n\nif __name__ == \"__main__\":\n    solve()\n",
   cpp: "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    // Write your solution here\n    return 0;\n}\n",
 };
