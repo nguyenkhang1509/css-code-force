@@ -1,15 +1,15 @@
 import "server-only";
 import { Sandbox } from "@vercel/sandbox";
 import type { JudgeInput, JudgeOutput, JudgeProvider } from "@/lib/judge/types";
-import { normalizeOutput, truncate, MAX_INPUT_BYTES, MAX_OUTPUT_BYTES, MAX_DIAGNOSTIC_CHARS } from "@/lib/judge/output";
+import { normalizeOutput, truncate, MAX_INPUT_BYTES, MAX_OUTPUT_BYTES, MAX_TOTAL_TEST_BYTES, MAX_DIAGNOSTIC_CHARS } from "@/lib/judge/output";
 
 const SANDBOX_SESSION_MS = 160_000;
 const COMPILER_TIMEOUT_MS = 25_000;
 const TOTAL_TEST_BUDGET_MS = 80_000;
-const PLATFORM_OUTPUT_LIMIT = 300_000;
+const PLATFORM_OUTPUT_LIMIT = 2_000_000;
 
 function shellScript(source: string) {
-  return `#!/bin/bash\nset +e\nulimit -v "$CSS_MEMORY_KB"\nulimit -f 1024\ntimeout --signal=KILL --kill-after=0.2s "$CSS_TIMEOUT" ${source} < /vercel/sandbox/input.txt > /vercel/sandbox/output.txt 2> /vercel/sandbox/stderr.txt\nstatus=$?\nprintf '%s' "$status" > /vercel/sandbox/status.txt\nexit 0\n`;
+  return `#!/bin/bash\nset +e\nulimit -v "$CSS_MEMORY_KB"\nulimit -f 8192\ntimeout --signal=KILL --kill-after=0.2s "$CSS_TIMEOUT" ${source} < /vercel/sandbox/input.txt > /vercel/sandbox/output.txt 2> /vercel/sandbox/stderr.txt\nstatus=$?\nprintf '%s' "$status" > /vercel/sandbox/status.txt\nexit 0\n`;
 }
 
 function isMemoryError(stderr: string) {
@@ -33,9 +33,15 @@ export class VercelSandboxJudge implements JudgeProvider {
     const tests = input.samplesOnly ? input.testCases.filter(test => test.is_sample) : input.testCases;
     if (!tests.length) throw new Error("This problem does not have any public sample tests yet.");
     if (tests.length > 250) throw new Error("This problem has more than 250 judge tests. Ask an administrator to reduce the test set.");
+    let totalTestBytes = 0;
     for (const test of tests) {
-      if (Buffer.byteLength(test.input, "utf8") > MAX_INPUT_BYTES) throw new Error("A judge input is larger than the supported 64 KB limit.");
+      const inputBytes = Buffer.byteLength(test.input, "utf8");
+      const outputBytes = Buffer.byteLength(test.expected_output, "utf8");
+      if (inputBytes > MAX_INPUT_BYTES) throw new Error("A judge input is larger than the supported 3 MB limit.");
+      if (outputBytes > MAX_OUTPUT_BYTES) throw new Error("A judge expected output is larger than the supported 2 MB limit.");
+      totalTestBytes += inputBytes + outputBytes;
     }
+    if (totalTestBytes > MAX_TOTAL_TEST_BYTES) throw new Error("This problem exceeds the 4 MB total judge-data limit.");
 
     const overallStarted = performance.now();
     const sandbox = await Sandbox.create({
@@ -79,7 +85,7 @@ export class VercelSandboxJudge implements JudgeProvider {
       } else {
         const compiled = await sandbox.runCommand({
           cmd: "bash",
-          args: ["-lc", "ulimit -v 262144; ulimit -f 1024; timeout --signal=KILL 5s python3 -m py_compile /vercel/sandbox/main.py 2>/vercel/sandbox/compile.txt"],
+          args: ["-lc", "ulimit -v 262144; ulimit -f 8192; timeout --signal=KILL 5s python3 -m py_compile /vercel/sandbox/main.py 2>/vercel/sandbox/compile.txt"],
           timeoutMs: 7_000,
         });
         if (compiled.exitCode !== 0) {
@@ -128,7 +134,7 @@ export class VercelSandboxJudge implements JudgeProvider {
         }
         if (outputWasCapped) {
           verdict = "Runtime Error";
-          errorMessage = "Your program produced too much output. Output is limited to 300 KB per test case.";
+          errorMessage = "Your program produced too much output. Output is limited to 2 MB per test case.";
         } else if (exitCode !== 0) {
           verdict = classifyRun(exitCode, stderr);
           errorMessage = verdict === "Time Limit Exceeded" ? `Time limit exceeded on test ${i + 1}.` : verdict === "Memory Limit Exceeded" ? `Memory limit exceeded on test ${i + 1}.` : truncate(stderr || `Program exited with code ${exitCode}.`, 2_000);

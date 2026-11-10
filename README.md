@@ -66,7 +66,7 @@ The problem list and authentication pages explain when Supabase setup is missing
 
 Open `/admin` and choose **New problem**. Write the statement, input/output descriptions, constraints, tags, time/memory limits, and test cases. Problem statements and sample explanations support Markdown and LaTeX (`$x^2$`). At least one test case must be marked **Public sample**. The rest stay private and are only read by the server judge.
 
-The editor accepts up to 250 test cases per problem, with a combined 256 KB input/output cap. Individual test inputs and outputs are capped at 64 KB. The admin form can import a JSON array of cases or an object containing `test_cases`, for example:
+The editor accepts up to 250 test cases per problem, with a combined 4 MB input/output cap. Individual judge inputs are capped at 3 MB and expected outputs at 2 MB. The admin form can import a JSON array of cases or an object containing `test_cases`, for example:
 
 ```json
 [
@@ -77,11 +77,17 @@ The editor accepts up to 250 test cases per problem, with a combined 256 KB inpu
 
 Draft problems are visible to admins only. Reference solutions are private by default and are not included in student problem queries. An admin can choose to publish them from the problem editor.
 
+### Add CSS Practice Statistics
+
+The idempotent seed migration is located at supabase/migrations/202611090001_css_practice_statistics.sql. For an already-created Supabase project, open the project dashboard, select **SQL Editor** in the left sidebar, choose **New query**, paste the entire migration file from the repository, then click **Run**. It preserves the existing UUID if this problem is already present and replaces only this problem's tags, tests, and private reference solution. The database generates a UUID for a new problem because problem IDs in this schema are UUIDs, not sequential numbers.
+
+The migration creates 30 official cases: 2 public examples and 28 hidden tests. Its large hidden case has n = q = 100,000, with alternating full-range and short-range queries. The SQL migration increases the existing test-data caps to fit this case.
+
 ## Judge design and limits
 
 `lib/judge/types.ts` defines the replaceable `JudgeProvider` boundary. `VercelSandboxJudge` creates a new disposable Sandbox for each run or submission. Python sandboxes start with outbound networking denied. If C++17's `g++` is missing, the trusted setup step installs it while the firewall is open, then changes the Sandbox to `deny-all` before compilation and student execution. No app credentials or hidden cases enter student code.
 
-The service compiles C++ once per submission, starts a separate process for each test, and stops at the first failure. Each process has a wall timeout, a shell virtual-address-space cap, a file-size cap, and a 300 KB stdout cap. An overall 80-second test budget, 64 KB source cap, 256 KB total judge-data cap, per-user rate limits, and a database-coordinated three-slot concurrency limit keep requests bounded. Stale concurrency leases expire after three minutes if a function is terminated before cleanup.
+The service compiles C++ once per submission, starts a separate process for each test, and stops at the first failure. Each process has a wall timeout, a shell virtual-address-space cap, a file-size cap, and a 2 MB stdout cap. An overall 80-second test budget, 64 KB source cap, 4 MB total judge-data cap, per-user rate limits, and a database-coordinated three-slot concurrency limit keep requests bounded. Stale concurrency leases expire after three minutes if a function is terminated before cleanup.
 
 Output comparison converts CRLF to LF, ignores trailing spaces/tabs at the end of each line, and ignores final newline characters. Leading whitespace, spaces within a line, and character case remain significant.
 
@@ -113,6 +119,7 @@ npm run dev       # Local development
 npm run build     # Production build
 npm start         # Run the production build locally
 npm run typecheck # TypeScript type check
+npm run test:problem # Samples, randomized reference checks, test-set size, and known incorrect approaches
 npx playwright install chromium # One-time browser setup for end-to-end tests
 npm run test:e2e # Supabase + Vercel Sandbox integration suite
 ```
