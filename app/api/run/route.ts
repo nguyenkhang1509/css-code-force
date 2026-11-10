@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser, jsonError } from "@/lib/api";
 import { VercelSandboxJudge } from "@/lib/judge/vercel-sandbox";
-import { MAX_SOURCE_BYTES } from "@/lib/judge/output";
+import { MAX_SOURCE_BYTES, publicJudgeFailure } from "@/lib/judge/output";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "The code runner is temporarily unavailable.", 503);
+    return jsonError(publicJudgeFailure(error), 503);
   } finally {
     try { await admin.rpc("release_judge_lease", { p_lease_id: lease }); } catch { /* Lease expires automatically if the database is unavailable. */ }
   }

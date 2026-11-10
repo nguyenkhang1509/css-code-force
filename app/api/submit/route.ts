@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser, jsonError } from "@/lib/api";
 import { VercelSandboxJudge } from "@/lib/judge/vercel-sandbox";
-import { MAX_SOURCE_BYTES, truncate } from "@/lib/judge/output";
+import { MAX_SOURCE_BYTES, publicJudgeFailure } from "@/lib/judge/output";
 import type { JudgeOutput } from "@/lib/judge/types";
 
 export const runtime = "nodejs";
@@ -53,10 +53,10 @@ export async function POST(request: Request) {
         samplesOnly: false,
       });
     } catch (error) {
-      result = { verdict: "Judging Error", executionTimeMs: null, passedTestCases: 0, totalTestCases: 0, errorMessage: truncate(error instanceof Error ? error.message : "The isolated runner is unavailable.", 2_000), cases: [] };
+      result = { verdict: "Judging Error", executionTimeMs: null, passedTestCases: 0, totalTestCases: 0, errorMessage: publicJudgeFailure(error), cases: [] };
     }
 
-    const errorMessage = result.verdict === "Judging Error" ? "The judge could not complete this run. Please retry later." : result.errorMessage;
+    const errorMessage = result.verdict === "Judging Error" ? (result.errorMessage || "The judge service could not complete this run. Your code was not marked Accepted. Please retry in a moment.") : result.errorMessage;
     const { error: updateError } = await admin.from("submissions").update({
       verdict: result.verdict,
       execution_time_ms: result.executionTimeMs,
