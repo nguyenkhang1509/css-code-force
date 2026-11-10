@@ -1,4 +1,4 @@
--- The two stress cases contain 100,000-element arrays and 100,000 queries.
+-- The stress case contains a 100,000-element array and 100,000 queries.
 -- Expand the existing judge-data limits to hold them while retaining hard caps.
 alter table public.test_cases drop constraint if exists test_cases_input_check;
 alter table public.test_cases drop constraint if exists test_cases_expected_output_check;
@@ -60,28 +60,14 @@ $$;
 revoke all on function public.admin_save_problem(jsonb,jsonb,text[],jsonb) from public, authenticated;
 grant execute on function public.admin_save_problem(jsonb,jsonb,text[],jsonb) to service_role;
 
-create temp table if not exists css_stats_seed_problem_id (id uuid not null);
-truncate table pg_temp.css_stats_seed_problem_id;
-drop table if exists pg_temp.css_stats_perf_queries;
-drop table if exists pg_temp.css_stats_perf_sorted_prefixes;
-drop table if exists pg_temp.css_stats_perf_original_prefixes;
-drop table if exists pg_temp.css_stats_perf_scores;
-drop table if exists pg_temp.css_stats_small_cases;
-create temp table css_stats_small_cases (
-  case_index integer primary key,
-  scores bigint[] not null,
-  queries jsonb not null,
-  is_sample boolean not null
-);
-
 do $$
 declare
   v_problem_id uuid;
 begin
   select p.id into v_problem_id
   from public.problems p
-  where p.slug = 'css-practice-statistics' or lower(p.title) = lower('CSS Practice Statistics')
-  order by (p.slug = 'css-practice-statistics') desc
+  where p.slug = 'code-quest-tryout-statistics' or lower(p.title) = lower('Code Quest Tryout Statistics')
+  order by (p.slug = 'code-quest-tryout-statistics') desc
   limit 1;
 
   if v_problem_id is null then
@@ -89,14 +75,14 @@ begin
       slug,title,difficulty,statement,input_format,output_format,constraints,
       time_limit_ms,memory_limit_mb,published
     ) values (
-      'css-practice-statistics',
-      'CSS Practice Statistics',
+      'code-quest-tryout-statistics',
+      'Code Quest Tryout Statistics',
       'Medium',
-      $statement$## CSS Practice Statistics
+      $statement$## Code Quest Tryout Statistics
 
-The Computer Science Society (CSS) has prepared $N$ programming challenges. Each challenge has a score, and the scores are recorded in an array $a_1, a_2, \ldots, a_n$.
+Khang has prepared $N$ programming problems for the Code Quest tryouts. Each problem has a score, and the scores are recorded in an array $a_1, a_2, \ldots, a_n$.
 
-CSS wants to analyze these scores by asking two types of queries:
+Khang wants to analyze these scores by asking two types of queries:
 
 1. Given two integers $l$ and $r$ ($1 \le l \le r \le n$), find the sum of the scores from position $l$ to $r$ in the original array: $\displaystyle \sum_{i=l}^{r} a_i$
 
@@ -125,14 +111,14 @@ The answers may exceed the range of a 32-bit integer.$output$,
     ) returning id into v_problem_id;
   else
     update public.problems set
-      slug='css-practice-statistics',
-      title='CSS Practice Statistics',
+      slug='code-quest-tryout-statistics',
+      title='Code Quest Tryout Statistics',
       difficulty='Medium',
-      statement=$statement$## CSS Practice Statistics
+      statement=$statement$## Code Quest Tryout Statistics
 
-The Computer Science Society (CSS) has prepared $N$ programming challenges. Each challenge has a score, and the scores are recorded in an array $a_1, a_2, \ldots, a_n$.
+Khang has prepared $N$ programming problems for the Code Quest tryouts. Each problem has a score, and the scores are recorded in an array $a_1, a_2, \ldots, a_n$.
 
-CSS wants to analyze these scores by asking two types of queries:
+Khang wants to analyze these scores by asking two types of queries:
 
 1. Given two integers $l$ and $r$ ($1 \le l \le r \le n$), find the sum of the scores from position $l$ to $r$ in the original array: $\displaystyle \sum_{i=l}^{r} a_i$
 
@@ -169,11 +155,39 @@ The answers may exceed the range of a 32-bit integer.$output$,
 
   delete from public.test_cases where problem_id=v_problem_id;
   delete from public.reference_solutions where problem_id=v_problem_id;
-  insert into pg_temp.css_stats_seed_problem_id(id) values (v_problem_id);
 end;
 $$;
 
-insert into pg_temp.css_stats_small_cases(case_index,scores,queries,is_sample) values
+do $$
+declare
+  fixture record;
+  v_problem_id uuid;
+  v_n integer;
+  v_q integer;
+  v_sorted bigint[];
+  v_original_prefix bigint[];
+  v_sorted_prefix bigint[];
+  v_input text;
+  v_output text;
+  v_type integer;
+  v_l integer;
+  v_r integer;
+  v_i integer;
+  v_answer bigint;
+  query_row record;
+begin
+  select id into v_problem_id from public.problems where slug='code-quest-tryout-statistics';
+  if v_problem_id is null then raise exception 'Code Quest Tryout Statistics problem was not created'; end if;
+
+  for fixture in
+    select case_index,
+      array(
+        select score_value::bigint
+        from unnest(string_to_array(trim(both '{}' from score_list), ',')) as parsed(score_value)
+      ) as scores,
+      queries::jsonb as queries,
+      is_sample
+    from (values
 (0,'{8,3,5,3,10,6}','[[1,2,5],[2,2,4],[1,1,6],[2,5,6]]',true),
 (1,'{5,5,2,3}','[[1,2,4],[2,1,3],[1,1,1],[2,2,4]]',true),
 (2,'{1}','[[1,1,1]]',false),
@@ -202,26 +216,10 @@ insert into pg_temp.css_stats_small_cases(case_index,scores,queries,is_sample) v
 (25,'{3,8,1,9,2,7,4,6,5,10}','[[1,1,10],[1,1,5],[1,6,10],[1,3,8],[1,4,4],[1,7,9]]',false),
 (26,'{3,8,1,9,2,7,4,6,5,10}','[[2,1,10],[2,1,5],[2,6,10],[2,3,8],[2,4,4],[2,7,9]]',false),
 (27,'{5,1,4,2,3}','[[1,1,5],[2,1,5],[1,2,4],[2,2,4],[1,3,3],[2,3,3]]',false),
-(28,'{123456789,987654321,555555555,1}','[[1,1,4],[2,1,4],[1,2,3],[2,2,3],[1,4,4],[2,1,1]]',false);
-
-do $$
-declare
-  fixture record;
-  v_n integer;
-  v_q integer;
-  v_sorted bigint[];
-  v_original_prefix bigint[];
-  v_sorted_prefix bigint[];
-  v_input text;
-  v_output text;
-  v_type integer;
-  v_l integer;
-  v_r integer;
-  v_i integer;
-  v_answer bigint;
-  query_row record;
-begin
-  for fixture in select * from pg_temp.css_stats_small_cases order by case_index loop
+(28,'{123456789,987654321,555555555,1}','[[1,1,4],[2,1,4],[1,2,3],[2,2,3],[1,4,4],[2,1,1]]',false)
+    ) as case_data(case_index,score_list,queries,is_sample)
+    order by case_index
+  loop
     v_n := cardinality(fixture.scores);
     v_q := jsonb_array_length(fixture.queries);
     select array_agg(value order by value) into v_sorted
@@ -247,57 +245,56 @@ begin
       v_output := v_output || v_answer::text || E'\n';
     end loop;
     insert into public.test_cases(problem_id,case_index,input,expected_output,is_sample,explanation)
-    values ((select id from pg_temp.css_stats_seed_problem_id),fixture.case_index,v_input,v_output,fixture.is_sample,null);
+    values (v_problem_id,fixture.case_index,v_input,v_output,fixture.is_sample,null);
   end loop;
 end;
 $$;
 
-create temp table css_stats_perf_scores as
-select i::integer as i, (mod(i::bigint*48271+12345,1000000000)+1)::bigint as score
-from generate_series(1,100000) as series(i);
-create unique index css_stats_perf_scores_i on css_stats_perf_scores(i);
-create temp table css_stats_perf_original_prefixes as
-select i,
-  sum(score) over(order by i rows between unbounded preceding and current row) as prefix
-from css_stats_perf_scores;
-create unique index css_stats_perf_original_prefixes_i on css_stats_perf_original_prefixes(i);
-create temp table css_stats_perf_sorted_prefixes as
-select row_number() over(order by score,i)::integer as i,
-  sum(score) over(order by score,i rows between unbounded preceding and current row) as prefix
-from css_stats_perf_scores;
-create unique index css_stats_perf_sorted_prefixes_i on css_stats_perf_sorted_prefixes(i);
-create temp table css_stats_perf_queries as
-select i as query_index,
-  case when i%2=1 then 1 else 2 end as query_type,
-  case when i%4 in (1,2) then 1 else ((i*7919)%100000)+1 end as l,
-  case when i%4 in (1,2) then 100000 else least(100000,((i*7919)%100000)+1+(i%2)) end as r
-from generate_series(1,100000) as series(i);
-
-with scores_text as (
-  select string_agg(score::text,' ' order by i) as value from pg_temp.css_stats_perf_scores
+with score_values as (
+  select i::integer as i, (mod(i::bigint*48271+12345,1000000000)+1)::bigint as score
+  from generate_series(1,100000) as series(i)
+),
+original_prefixes as (
+  select i, sum(score) over(order by i rows between unbounded preceding and current row) as prefix
+  from score_values
+),
+sorted_prefixes as (
+  select row_number() over(order by score,i)::integer as i,
+    sum(score) over(order by score,i rows between unbounded preceding and current row) as prefix
+  from score_values
+),
+queries as (
+  select i as query_index,
+    case when i%2=1 then 1 else 2 end as query_type,
+    case when i%4 in (1,2) then 1 else ((i*7919)%100000)+1 end as l,
+    case when i%4 in (1,2) then 100000 else least(100000,((i*7919)%100000)+1+(i%2)) end as r
+  from generate_series(1,100000) as series(i)
+),
+scores_text as (
+  select string_agg(score::text,' ' order by i) as value from score_values
 ),
 queries_text as (
   select string_agg(query_type::text||' '||l::text||' '||r::text,E'\n' order by query_index) as value
-  from pg_temp.css_stats_perf_queries
+  from queries
 ),
 answer_text as (
   select string_agg((case when q.query_type=1 then ohi.prefix-coalesce(olo.prefix,0)
                           else shi.prefix-coalesce(slo.prefix,0) end)::text,E'\n' order by q.query_index) as value
-  from pg_temp.css_stats_perf_queries q
-  join pg_temp.css_stats_perf_original_prefixes ohi on ohi.i=q.r
-  left join pg_temp.css_stats_perf_original_prefixes olo on olo.i=q.l-1
-  join pg_temp.css_stats_perf_sorted_prefixes shi on shi.i=q.r
-  left join pg_temp.css_stats_perf_sorted_prefixes slo on slo.i=q.l-1
+  from queries q
+  join original_prefixes ohi on ohi.i=q.r
+  left join original_prefixes olo on olo.i=q.l-1
+  join sorted_prefixes shi on shi.i=q.r
+  left join sorted_prefixes slo on slo.i=q.l-1
 )
 insert into public.test_cases(problem_id,case_index,input,expected_output,is_sample,explanation)
-select (select id from pg_temp.css_stats_seed_problem_id),29,
+select (select id from public.problems where slug='code-quest-tryout-statistics'),29,
   E'100000\n'||scores_text.value||E'\n100000\n'||queries_text.value||E'\n',
   answer_text.value||E'\n',false,null
 from scores_text,queries_text,answer_text;
 
 insert into public.reference_solutions(problem_id,python,cpp,published)
 values (
-  (select id from pg_temp.css_stats_seed_problem_id),
+  (select id from public.problems where slug='code-quest-tryout-statistics'),
   $python$import sys
 
 def solve():
@@ -353,7 +350,7 @@ int main() {
 
     int q;
     cin >> q;
-    while (q--) {
+    for (int queryIndex = 0; queryIndex < q; ++queryIndex) {
         int type, left, right;
         cin >> type >> left >> right;
         const auto &prefix = (type == 1 ? originalPrefix : sortedPrefix);
@@ -365,10 +362,3 @@ int main() {
 )
 on conflict(problem_id) do update
 set python=excluded.python,cpp=excluded.cpp,published=false,updated_at=now();
-
-drop table pg_temp.css_stats_perf_queries;
-drop table pg_temp.css_stats_perf_sorted_prefixes;
-drop table pg_temp.css_stats_perf_original_prefixes;
-drop table pg_temp.css_stats_perf_scores;
-drop table pg_temp.css_stats_small_cases;
-drop table pg_temp.css_stats_seed_problem_id;
