@@ -237,6 +237,9 @@ export class VercelSandboxJudge implements JudgeProvider {
           if (snapshotId) {
             throw new Error("The configured judge snapshot does not contain g++. Recreate the prepared judge snapshot and update VERCEL_SANDBOX_SNAPSHOT_ID.");
           }
+          if (process.env.VERCEL === "1") {
+            throw new Error("C++ judging is not prepared in this Vercel deployment. Create a runtime snapshot with `npm run judge:snapshot`, add its ID as VERCEL_SANDBOX_SNAPSHOT_ID for Production and Preview, then redeploy.");
+          }
           const install = await withTimeout(
             sandbox.runCommand({
               cmd: "bash",

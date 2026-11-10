@@ -22,6 +22,7 @@ const SAFE_JUDGE_FAILURE_PREFIXES = [
   "Python compilation exceeded ",
   "The sandbox could not disable network access ",
   "The configured judge snapshot does not contain g++.",
+  "C++ judging is not prepared in this Vercel deployment.",
   "The isolated runner exceeded its ",
   "The isolated runner exceeded its platform time budget",
   "The isolated runner could not return its result ",
