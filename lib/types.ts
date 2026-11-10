@@ -19,7 +19,7 @@ export type Problem = {
 };
 
 export type TestCase = { id?: string; input: string; expected_output: string; is_sample: boolean; explanation?: string | null };
-export type JudgeResult = { submissionId?: string; verdict: Verdict; message?: string; errorMessage?: string | null; executionTimeMs?: number | null; cases?: Array<{ index: number; passed: boolean; input?: string; expectedOutput?: string; actualOutput?: string; executionTimeMs?: number; message?: string }> };
+export type JudgeResult = { submissionId?: string; verdict: Verdict; message?: string; errorMessage?: string | null; executionTimeMs?: number | null; passedTestCases?: number; totalTestCases?: number; cases?: Array<{ index: number; passed: boolean; input?: string; expectedOutput?: string; actualOutput?: string; executionTimeMs?: number; message?: string }> };
 
 export const STARTER_CODE: Record<Language, string> = {
   python: "def solve():\n    # Write your solution here\n    pass\n\nif __name__ == \"__main__\":\n    solve()\n",

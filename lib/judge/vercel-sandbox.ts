@@ -118,7 +118,7 @@ for index, test in enumerate(cases, start=1):
         item["passed"] = True
         passed += 1
 
-    if samples_only:
+    if samples_only or test.get("is_sample", False):
         item.update({
             "input": test["input"][:8000],
             "expectedOutput": test["expected_output"][:8000],
@@ -126,7 +126,8 @@ for index, test in enumerate(cases, start=1):
         })
     elif not item["passed"]:
         item["message"] = error_message
-    results.append(item)
+    if samples_only or test.get("is_sample", False) or not item["passed"]:
+        results.append(item)
     if verdict != "Accepted":
         break
 
@@ -187,23 +188,31 @@ export class VercelSandboxJudge implements JudgeProvider {
       max_output_bytes: MAX_OUTPUT_BYTES,
       total_budget_ms: TOTAL_TEST_BUDGET_MS,
       samples_only: input.samplesOnly,
-      test_cases: tests.map(test => ({ input: test.input, expected_output: test.expected_output })),
+      test_cases: tests.map(test => ({ input: test.input, expected_output: test.expected_output, is_sample: test.is_sample })),
     }), { level: 1 });
+    const snapshotId = process.env.VERCEL_SANDBOX_SNAPSHOT_ID?.trim();
 
     let sandbox: Sandbox;
     try {
+      const sandboxOptions = {
+        persistent: false as const,
+        timeout: SANDBOX_SESSION_MS,
+        resources: { vcpus: 1 as const },
+      };
       sandbox = await withTimeout(
-        Sandbox.create({
-          persistent: false,
-          timeout: SANDBOX_SESSION_MS,
-          resources: { vcpus: 1 },
-          networkPolicy: input.language === "cpp" ? "allow-all" : "deny-all",
-        }),
+        snapshotId
+          ? Sandbox.create({ ...sandboxOptions, source: { type: "snapshot", snapshotId }, networkPolicy: "deny-all" })
+          : Sandbox.create({ ...sandboxOptions, networkPolicy: input.language === "cpp" ? "allow-all" : "deny-all" }),
         SANDBOX_CREATE_TIMEOUT_MS,
         "The isolated runner did not start within 20 seconds. Please retry.",
       );
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "The isolated runner could not start.");
+      const message = error instanceof Error ? error.message : "";
+      if (message.startsWith("The isolated runner did not start within ")) throw error;
+      if (snapshotId && /snapshot_(not_found|region_mismatch)|snapshot.*(expired|not found|region)/i.test(message)) {
+        throw new Error("The configured judge snapshot is expired or unavailable in this Vercel region. Create a new judge snapshot and update VERCEL_SANDBOX_SNAPSHOT_ID.");
+      }
+      throw new Error("Vercel could not start the judge sandbox. Please retry in a moment.");
     }
 
     try {
@@ -225,6 +234,9 @@ export class VercelSandboxJudge implements JudgeProvider {
           "The sandbox did not respond while checking for the C++ compiler.",
         );
         if (hasCompiler.exitCode !== 0) {
+          if (snapshotId) {
+            throw new Error("The configured judge snapshot does not contain g++. Recreate the prepared judge snapshot and update VERCEL_SANDBOX_SNAPSHOT_ID.");
+          }
           const install = await withTimeout(
             sandbox.runCommand({
               cmd: "bash",
@@ -238,11 +250,13 @@ export class VercelSandboxJudge implements JudgeProvider {
             throw new Error("The sandbox could not prepare g++ for C++17. Please retry later or contact a CSS admin if this repeats.");
           }
         }
-        await withTimeout(
-          sandbox.update({ networkPolicy: "deny-all" }),
-          8_000,
-          "The sandbox could not disable network access within 8 seconds.",
-        );
+        if (!snapshotId) {
+          await withTimeout(
+            sandbox.update({ networkPolicy: "deny-all" }),
+            8_000,
+            "The sandbox could not disable network access within 8 seconds.",
+          );
+        }
         const compiled = await withTimeout(
           sandbox.runCommand({
             cmd: "bash",

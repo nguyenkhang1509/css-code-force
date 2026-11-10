@@ -14,11 +14,14 @@ export function truncate(value: string, limit = MAX_DIAGNOSTIC_CHARS) {
 
 const SAFE_JUDGE_FAILURE_PREFIXES = [
   "The isolated runner did not start within ",
+  "The configured judge snapshot is expired or unavailable ",
+  "Vercel could not start the judge sandbox.",
   "The isolated runner could not receive ",
   "Preparing the C++ compiler exceeded ",
   "C++ compilation exceeded ",
   "Python compilation exceeded ",
   "The sandbox could not disable network access ",
+  "The configured judge snapshot does not contain g++.",
   "The isolated runner exceeded its ",
   "The isolated runner exceeded its platform time budget",
   "The isolated runner could not return its result ",

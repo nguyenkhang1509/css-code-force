@@ -85,15 +85,27 @@ The migration creates 30 official cases: 2 public examples and 28 hidden tests. 
 
 ## Judge design and limits
 
-`lib/judge/types.ts` defines the replaceable `JudgeProvider` boundary. `VercelSandboxJudge` creates a new disposable Sandbox for each run or submission. Python sandboxes start with outbound networking denied. If C++17's `g++` is missing, the trusted setup step installs it while the firewall is open, then changes the Sandbox to `deny-all` before compilation and student execution. No app credentials or hidden cases enter student code.
+`lib/judge/types.ts` defines the replaceable `JudgeProvider` boundary. `VercelSandboxJudge` creates a new disposable Sandbox for each run or submission. Python sandboxes start with outbound networking denied. If `VERCEL_SANDBOX_SNAPSHOT_ID` is set, it restores the prepared Python/C++ runtime with networking denied. Without a snapshot, the C++ fallback installs `g++` while the firewall is open, then changes the Sandbox to `deny-all` before compilation and student execution. No app credentials or hidden cases enter student code.
 
 The service compiles C++ once per submission, transfers the test data in one compressed bundle, and starts one trusted runner in the sandbox. That runner starts a separate student process for each test, kills leftover child processes, applies per-process wall-time, virtual-memory, CPU, and file-size limits, and stops at the first failure. The full test run has a 35-second budget; sandbox startup, compilation, file transfer, and cleanup also have explicit timeouts. The app keeps the 64 KB source cap, 4 MB total judge-data cap, per-user rate limits, and database-coordinated three-slot concurrency limit. Stale concurrency leases expire after three minutes if a function is terminated before cleanup.
+
+### Optional: prepare a faster Sandbox runtime
+
+To skip installing the C++ compiler during submissions and reduce runtime setup, create a Vercel Sandbox snapshot with Python 3, GNU C++17, and core utilities already installed:
+
+1. In VS Code, open **Terminal â†’ New Terminal** in this project folder. The one-time setup script loads local environment variables for Vercel OIDC authentication but does not print credentials or pass them into the sandbox.
+2. If this folder is not linked to Vercel, run `npx vercel link`. If the local OIDC token is missing or expired, refresh it with `npx vercel env pull .env.local`. Keep `.env.local` private and out of GitHub.
+3. Run `npm run judge:snapshot`. When it finishes, copy the `snap_...` ID it prints. The script installs the trusted runtimes, disables sandbox networking, then saves the prepared image. It does not include Supabase keys or student code.
+4. In Vercel, open **Project â†’ Settings â†’ Environment Variables â†’ Add Environment Variable**. Set **Key** to `VERCEL_SANDBOX_SNAPSHOT_ID`, **Value** to the copied snapshot ID, and select **Production** and **Preview**.
+5. Save and redeploy. Each run still gets a new isolated Sandbox, restored from that prepared runtime.
+
+Snapshots expire after 30 days without use by default; using one resets its expiration. If it expires, generate a replacement and update the Vercel variable. Vercel Hobby includes 15 GB lifetime snapshot storage; snapshot creation and judging also count toward the regular Sandbox quotas. Snapshots skip repeated package setup, but sandbox startup and snapshot restore still take time. See [Vercel Sandbox snapshots](https://vercel.com/docs/sandbox/concepts/snapshots) and [Sandbox pricing and quotas](https://vercel.com/docs/sandbox/pricing).
 
 Output comparison converts CRLF to LF, ignores trailing spaces/tabs at the end of each line, and ignores final newline characters. Leading whitespace, spaces within a line, and character case remain significant.
 
 Vercel Sandbox reports command duration, which is saved as execution time. The SDK does not provide a trustworthy per-program memory measurement, so the app leaves memory usage blank. The OS virtual-memory cap is best-effort: it is not an RSS meter, and the app reports Memory Limit Exceeded only when the runtime emits a recognizable allocation error. Other resource failures remain runtime errors or judging errors rather than guessed verdicts.
 
-The submission endpoint is synchronous, not a pretend background queue. It has a 180-second Vercel Function maximum and an 80-second total test budget. New Vercel projects use Fluid Compute by default, where Hobby functions support up to 300 seconds; enable Fluid Compute for an older Vercel project before deploying. Without Fluid Compute, Hobby functions have a 60-second maximum and the judge can time out. Infrastructure failures become **Judging Error** and are stored as such. Browser disconnects can make the response unavailable; the saved submission page remains the source of truth.
+The submission endpoint is synchronous, not a pretend background queue. It has a 180-second Vercel Function maximum and a 35-second total test budget. New Vercel projects use Fluid Compute by default, where Hobby functions support up to 300 seconds; enable Fluid Compute for an older Vercel project before deploying. Without Fluid Compute, Hobby functions have a 60-second maximum and the judge can time out. Infrastructure failures become **Judging Error** and are stored as such. Browser disconnects can make the response unavailable; the saved submission page remains the source of truth.
 
 ## Deploy to Vercel
 
@@ -103,6 +115,7 @@ The submission endpoint is synchronous, not a pretend background queue. It has a
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+   - `VERCEL_SANDBOX_SNAPSHOT_ID` (optional; prepared runtime snapshot for faster judging)
 
    Do not configure `VERCEL_OIDC_TOKEN` for production; Vercel provides its project OIDC identity. For local development, use `vercel link` and `vercel env pull` as shown above.
 
@@ -110,12 +123,13 @@ The submission endpoint is synchronous, not a pretend background queue. It has a
 4. Add the production URL to Supabase Auth's allowed redirect URLs. Promote the first admin with the SQL command above.
 5. Submit an example Python and C++ solution to confirm that the deployed project can create Vercel Sandboxes. Monitor Sandbox usage and function logs in the Vercel dashboard.
 
-The app has no required paid API or dependency. Vercel currently includes Sandbox usage on Hobby (5 active CPU-hours/month, 420 GB-hours of provisioned memory, 5,000 creations, and 20 GB of data transfer); Sandbox usage is capped and judging may stop when the included quota is consumed. Supabase Free includes 50,000 monthly active users and a 500 MB database; inactive free projects can pause after a week. These quotas are appropriate for a small club, not a large public judge. Vercel Hobby is for personal, non-commercial use, and its GitHub integration excludes organization-owned repositories; check that those account restrictions fit your club before deployment. See the current [Vercel Sandbox pricing and quotas](https://vercel.com/docs/sandbox/pricing), [Vercel Function duration settings](https://vercel.com/docs/functions/configuring-functions/duration), [Vercel Hobby plan](https://vercel.com/docs/plans/hobby), and [Supabase pricing](https://supabase.com/pricing).
+The app has no required paid API or dependency. Vercel currently includes Sandbox usage on Hobby (5 active CPU-hours/month, 420 GB-hours of provisioned memory, 5,000 creations, 20 GB of data transfer, and 15 GB lifetime snapshot storage); Sandbox usage is capped and judging may stop when the included quota is consumed. Supabase Free includes 50,000 monthly active users and a 500 MB database; inactive free projects can pause after a week. These quotas are appropriate for a small club, not a large public judge. Vercel Hobby is for personal, non-commercial use, and its GitHub integration excludes organization-owned repositories; check that those account restrictions fit your club before deployment. See the current [Vercel Sandbox pricing and quotas](https://vercel.com/docs/sandbox/pricing), [Vercel Function duration settings](https://vercel.com/docs/functions/configuring-functions/duration), [Vercel Hobby plan](https://vercel.com/docs/plans/hobby), and [Supabase pricing](https://supabase.com/pricing).
 
 ## Commands
 
 ```bash
 npm run dev       # Local development
+npm run judge:snapshot # One-time prepared runtime snapshot for faster judging
 npm run build     # Production build
 npm start         # Run the production build locally
 npm run typecheck # TypeScript type check
