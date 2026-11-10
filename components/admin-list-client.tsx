@@ -11,6 +11,7 @@ type ProblemRow = {
   id: string;
   title: string;
   slug: string;
+  section: "General" | "Code Quest Tryout";
   difficulty: string;
   published: boolean;
   created_at: string;
@@ -56,7 +57,7 @@ export function AdminListClient({ initialRows }: { initialRows: ProblemRow[] }) 
                 <tr key={row.id}>
                   <td>
                     <strong>{row.title}</strong>
-                    <div className="muted" style={{ fontSize: 12 }}>/{row.slug}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{row.section} · /{row.slug}</div>
                   </td>
                   <td>{row.difficulty}</td>
                   <td><Badge>{row.published ? "Published" : "Draft"}</Badge></td>

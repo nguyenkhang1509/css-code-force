@@ -1,7 +1,7 @@
 export const MAX_SOURCE_BYTES = 65_536;
-export const MAX_INPUT_BYTES = 3_145_728;
+export const MAX_INPUT_BYTES = 8_388_608;
 export const MAX_OUTPUT_BYTES = 2_097_152;
-export const MAX_TOTAL_TEST_BYTES = 4_194_304;
+export const MAX_TOTAL_TEST_BYTES = 16_777_216;
 export const MAX_DIAGNOSTIC_CHARS = 4_000;
 
 export function normalizeOutput(output: string) {

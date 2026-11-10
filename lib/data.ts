@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 
-export async function getPublishedProblems() {
+export async function getPublishedProblems(section: "General" | "Code Quest Tryout" = "General") {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("problems").select("*,problem_tags(tag)").eq("published", true).order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("problems").select("*,problem_tags(tag)").eq("published", true).eq("section", section).order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(problem => ({ ...problem, tags: (problem.problem_tags ?? []).map((tag: {tag:string}) => tag.tag) }));
 }

@@ -15,7 +15,7 @@ export default async function HomePage() {
   let setupError = "";
   try {
     const supabase = await createClient();
-    const { data } = await supabase.from("problems").select("*,problem_tags(tag)").eq("published",true).order("created_at",{ascending:false}).limit(4);
+    const { data } = await supabase.from("problems").select("*,problem_tags(tag)").eq("published",true).eq("section","General").order("created_at",{ascending:false}).limit(4);
     problems = data ?? [];
     const admin = createAdminClient();
     const [problemCount,submissionCount,acceptedProblemCount] = await Promise.all([

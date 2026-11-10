@@ -1,4 +1,5 @@
 export type Difficulty = "Easy" | "Medium" | "Hard";
+export type ProblemSection = "General" | "Code Quest Tryout";
 export type Language = "python" | "cpp";
 export type Verdict = "Pending" | "Accepted" | "Wrong Answer" | "Time Limit Exceeded" | "Memory Limit Exceeded" | "Runtime Error" | "Compilation Error" | "Judging Error";
 
@@ -11,6 +12,7 @@ export type Problem = {
   input_format: string;
   output_format: string;
   constraints: string;
+  section: ProblemSection;
   tags: string[];
   time_limit_ms: number;
   memory_limit_mb: number;

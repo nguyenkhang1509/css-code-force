@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "judge:snapshot": "node scripts/create-judge-snapshot.mjs",
-    "test:problem": "node --test tests/css-practice-statistics.test.mjs",
+    "test:problem": "node --test tests/css-practice-statistics.test.mjs tests/code-quest-score-audit.test.mjs",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },

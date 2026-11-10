@@ -66,7 +66,7 @@ The problem list and authentication pages explain when Supabase setup is missing
 
 Open `/admin` and choose **New problem**. Write the statement, input/output descriptions, constraints, tags, time/memory limits, and test cases. Problem statements and sample explanations support Markdown and LaTeX (`$x^2$`). At least one test case must be marked **Public sample**. The rest stay private and are only read by the server judge.
 
-The editor accepts up to 250 test cases per problem, with a combined 4 MB input/output cap. Individual judge inputs are capped at 3 MB and expected outputs at 2 MB. The admin form can import a JSON array of cases or an object containing `test_cases`, for example:
+The editor accepts up to 250 test cases per problem, with a combined 16 MB input/output cap. Individual judge inputs are capped at 8 MB and expected outputs at 2 MB. The admin form can import a JSON array of cases or an object containing `test_cases`, for example:
 
 ```json
 [
@@ -83,11 +83,19 @@ The idempotent seed migration is located at supabase/migrations/202611090001_css
 
 The migration creates 30 official cases: 2 public examples and 28 hidden tests. Its large hidden case has n = q = 100,000, with alternating full-range and short-range queries. The SQL migration increases the existing test-data caps to fit this case.
 
+### Add the Code Quest Tryout section and Score Audit problem
+
+The migration `supabase/migrations/202611100001_code_quest_tryout_score_audit.sql` adds the **Code Quest Tryout** section, moves the existing Code Quest Tryout Statistics problem into it without its tags, and adds **Code Quest Tryouts: Score Audit**. Open Supabase **SQL Editor**, choose **New query**, paste the full migration, and click **Run**. It is safe to rerun: it updates the two tryout problems and replaces only Score Audit's tests and private reference solution. The section enforces that tryout problems have no topic tags.
+
+The new problem has 34 official tests: 2 public examples and 32 hidden cases, including three deterministic maximum-size tests. Both problem entries appear at `/code-quest-tryout`; their regular statement, editor, run, submit, and history pages remain the same as other problems. The new problem uses the existing UUID-based ID `a0000000-0000-4000-8000-000000000004` when that ID is available.
+
+Run `npm run test:problem` to verify both the earlier statistics problem and Score Audit fixtures. The Score Audit tests compare all 29 small hidden seed fixtures against a separate brute-force implementation and check 1,000 deterministic random cases.
+
 ## Judge design and limits
 
 `lib/judge/types.ts` defines the replaceable `JudgeProvider` boundary. `VercelSandboxJudge` creates a new disposable Sandbox for each run or submission. Python sandboxes start with outbound networking denied. If `VERCEL_SANDBOX_SNAPSHOT_ID` is set, it restores the prepared Python/C++ runtime with networking denied. Local development can install `g++` when needed; a Vercel deployment without the prepared snapshot returns a setup error instead of spending a submission installing the compiler. No app credentials or hidden cases enter student code.
 
-The service compiles C++ once per submission, transfers the test data in one compressed bundle, and starts one trusted runner in the sandbox. That runner starts a separate student process for each test, kills leftover child processes, applies per-process wall-time, virtual-memory, CPU, and file-size limits, and stops at the first failure. The full test run has a 35-second budget; sandbox startup, compilation, file transfer, and cleanup also have explicit timeouts. The app keeps the 64 KB source cap, 4 MB total judge-data cap, per-user rate limits, and database-coordinated three-slot concurrency limit. Stale concurrency leases expire after three minutes if a function is terminated before cleanup.
+The service compiles C++ once per submission, transfers the test data in one compressed bundle, and starts one trusted runner in the sandbox. That runner starts a separate student process for each test, kills leftover child processes, applies per-process wall-time, virtual-memory, CPU, and file-size limits, and stops at the first failure. The full test run has a 35-second budget; sandbox startup, compilation, file transfer, and cleanup also have explicit timeouts. The app keeps the 64 KB source cap, 16 MB total judge-data cap, per-user rate limits, and database-coordinated three-slot concurrency limit. Stale concurrency leases expire after three minutes if a function is terminated before cleanup.
 
 ### Optional: prepare a faster Sandbox runtime
 

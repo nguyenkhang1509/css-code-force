@@ -175,11 +175,11 @@ export class VercelSandboxJudge implements JudgeProvider {
     for (const test of tests) {
       const inputBytes = Buffer.byteLength(test.input, "utf8");
       const outputBytes = Buffer.byteLength(test.expected_output, "utf8");
-      if (inputBytes > MAX_INPUT_BYTES) throw new Error("A judge input is larger than the supported 3 MB limit.");
+      if (inputBytes > MAX_INPUT_BYTES) throw new Error("A judge input is larger than the supported 8 MB limit.");
       if (outputBytes > MAX_OUTPUT_BYTES) throw new Error("A judge expected output is larger than the supported 2 MB limit.");
       totalTestBytes += inputBytes + outputBytes;
     }
-    if (totalTestBytes > MAX_TOTAL_TEST_BYTES) throw new Error("This problem exceeds the 4 MB total judge-data limit.");
+    if (totalTestBytes > MAX_TOTAL_TEST_BYTES) throw new Error("This problem exceeds the 16 MB total judge-data limit.");
 
     const compressedCases = gzipSync(JSON.stringify({
       language: input.language,

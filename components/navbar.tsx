@@ -5,6 +5,7 @@ import { NavbarActions } from "@/components/navbar-actions";
 
 const links = [
   { href: "/problems", label: "Problems" },
+  { href: "/code-quest-tryout", label: "Code Quest Tryout" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/submissions", label: "Submissions" },
 ];
