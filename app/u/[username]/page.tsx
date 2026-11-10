@@ -53,7 +53,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       <div className="profile-stats" style={{ marginTop: 15 }}>
         {[
           { icon: CheckCircle2, value: solvedIds.length, label: "Unique problems solved" },
-          { icon: Send, value: accepted, label: "Accepted submissions" },
+          { icon: Send, value: accepted, label: "Accepted problems" },
           { icon: CheckCircle2, value: byDifficulty.Easy, label: "Easy solved" },
           { icon: CheckCircle2, value: `${byDifficulty.Medium} / ${byDifficulty.Hard}`, label: "Medium / Hard solved" },
         ].map((stat) => <div className="card profile-stat" key={stat.label}><stat.icon size={16} color="var(--blue)" /><strong>{stat.value}</strong><span>{stat.label}</span></div>)}
