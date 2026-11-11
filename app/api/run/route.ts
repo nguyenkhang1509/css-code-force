@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser, jsonError } from "@/lib/api";
 import { VercelSandboxJudge } from "@/lib/judge/vercel-sandbox";
 import { MAX_SOURCE_BYTES, publicJudgeFailure } from "@/lib/judge/output";
+import { getOutputChecker } from "@/lib/judge/config";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -31,6 +32,10 @@ export async function POST(request: Request) {
   if (leaseError) return jsonError("The judge could not acquire a run slot. Try again shortly.", 503);
   if (!lease) return jsonError("The judge is busy or you have reached the run limit. Please wait a minute and try again.", 429);
   try {
+    const { data: judgeConfig, error: configError } = await admin.from("problem_judge_configs").select("output_checker").eq("problem_id", problem.id).maybeSingle();
+    let outputChecker;
+    try { outputChecker = getOutputChecker(judgeConfig, configError); }
+    catch { return jsonError("Could not load the private checker configuration.", 503); }
     const { data: tests, error } = await admin.from("test_cases").select("input,expected_output,is_sample,case_index").eq("problem_id", problem.id).eq("is_sample", true).order("case_index");
     if (error) return jsonError("Could not load public examples for this problem.", 503);
     const result = await new VercelSandboxJudge().judge({
@@ -40,6 +45,7 @@ export async function POST(request: Request) {
       timeLimitMs: problem.time_limit_ms,
       memoryLimitMb: problem.memory_limit_mb,
       samplesOnly: true,
+      outputChecker,
     });
     return NextResponse.json(result);
   } catch (error) {

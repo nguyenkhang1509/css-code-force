@@ -5,6 +5,7 @@ import { requireUser, jsonError } from "@/lib/api";
 import { VercelSandboxJudge } from "@/lib/judge/vercel-sandbox";
 import { MAX_SOURCE_BYTES, publicJudgeFailure } from "@/lib/judge/output";
 import type { JudgeOutput } from "@/lib/judge/types";
+import { getOutputChecker } from "@/lib/judge/config";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -44,6 +45,8 @@ export async function POST(request: Request) {
     try {
       const { data: tests, error: testsError } = await admin.from("test_cases").select("input,expected_output,is_sample,case_index").eq("problem_id", problem.id).order("case_index");
       if (testsError || !tests?.length) throw new Error("This problem does not have judge test cases configured.");
+      const { data: judgeConfig, error: configError } = await admin.from("problem_judge_configs").select("output_checker").eq("problem_id", problem.id).maybeSingle();
+      const outputChecker = getOutputChecker(judgeConfig, configError);
       result = await new VercelSandboxJudge().judge({
         source: parsed.data.source,
         language: parsed.data.language,
@@ -51,6 +54,7 @@ export async function POST(request: Request) {
         timeLimitMs: problem.time_limit_ms,
         memoryLimitMb: problem.memory_limit_mb,
         samplesOnly: false,
+        outputChecker,
       });
     } catch (error) {
       result = { verdict: "Judging Error", executionTimeMs: null, passedTestCases: 0, totalTestCases: 0, errorMessage: publicJudgeFailure(error), cases: [] };

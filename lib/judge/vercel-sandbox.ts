@@ -33,6 +33,7 @@ memory_limit_bytes = config["memory_limit_mb"] * 1024 * 1024
 max_output_bytes = config["max_output_bytes"]
 total_budget_seconds = config["total_budget_ms"] / 1000
 samples_only = config["samples_only"]
+output_checker = config.get("output_checker", "exact")
 cases = config["test_cases"]
 command = ["python3", ROOT + "/main.py"] if language == "python" else [ROOT + "/main"]
 started = time.monotonic()
@@ -46,6 +47,44 @@ def normalize(value):
     value = value.replace("\r\n", "\n").replace("\r", "\n")
     value = "\n".join(line.rstrip(" \t") for line in value.split("\n"))
     return value.rstrip("\n")
+
+def check_single_reverse_segment(test_input, output):
+    try:
+        input_tokens = test_input.split()
+        n = int(input_tokens[0])
+        values = [int(token) for token in input_tokens[1:]]
+        if len(values) != n:
+            return False
+        tokens = output.split()
+        if not tokens:
+            return False
+        answer = tokens[0]
+        if answer == "no":
+            if len(tokens) != 1:
+                return False
+            ordered = sorted(values)
+            left = 0
+            while left < n and values[left] == ordered[left]:
+                left += 1
+            if left == n:
+                return False
+            right = n - 1
+            while values[right] == ordered[right]:
+                right -= 1
+            values[left:right + 1] = reversed(values[left:right + 1])
+            return values != ordered
+        if answer != "yes" or len(tokens) != 3:
+            return False
+        if not re.fullmatch(r"[+-]?\d+", tokens[1]) or not re.fullmatch(r"[+-]?\d+", tokens[2]):
+            return False
+        left = int(tokens[1])
+        right = int(tokens[2])
+        if left < 1 or right < left or right > n:
+            return False
+        values[left - 1:right] = reversed(values[left - 1:right])
+        return all(values[i - 1] < values[i] for i in range(1, n))
+    except (ValueError, IndexError, OverflowError):
+        return False
 
 def child_limits():
     resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes))
@@ -111,7 +150,10 @@ for index, test in enumerate(cases, start=1):
             error_message = stderr.strip()[:2000] or "Program exited with code %s." % process.returncode
             if not samples_only:
                 error_message = "The program failed on an official test. Hidden test data is private."
-    elif normalize(actual) != normalize(test["expected_output"]):
+    elif output_checker == "single_reverse_segment" and not check_single_reverse_segment(test["input"], actual):
+        verdict = "Wrong Answer"
+        error_message = "Your answer is not a valid reversal result for a public sample." if samples_only else "Your answer was not valid for an official test. Hidden test data is private."
+    elif output_checker == "exact" and normalize(actual) != normalize(test["expected_output"]):
         verdict = "Wrong Answer"
         error_message = "Output differed on a public sample." if samples_only else "The output did not match an official test. Hidden test data and output are private."
     else:
@@ -121,7 +163,7 @@ for index, test in enumerate(cases, start=1):
     if samples_only or test.get("is_sample", False):
         item.update({
             "input": test["input"][:8000],
-            "expectedOutput": test["expected_output"][:8000],
+            "expectedOutput": ("Any valid yes/no answer and segment" if output_checker == "single_reverse_segment" else test["expected_output"][:8000]),
             "actualOutput": actual[:8000],
         })
     elif not item["passed"]:
@@ -188,6 +230,7 @@ export class VercelSandboxJudge implements JudgeProvider {
       max_output_bytes: MAX_OUTPUT_BYTES,
       total_budget_ms: TOTAL_TEST_BUDGET_MS,
       samples_only: input.samplesOnly,
+      output_checker: input.outputChecker ?? "exact",
       test_cases: tests.map(test => ({ input: test.input, expected_output: test.expected_output, is_sample: test.is_sample })),
     }), { level: 1 });
     const snapshotId = process.env.VERCEL_SANDBOX_SNAPSHOT_ID?.trim();

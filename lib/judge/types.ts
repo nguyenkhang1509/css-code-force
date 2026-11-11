@@ -1,5 +1,7 @@
 import type { Language, TestCase, Verdict } from "@/lib/types";
 
+export type OutputChecker = "exact" | "single_reverse_segment";
+
 export type JudgeInput = {
   source: string;
   language: Language;
@@ -7,6 +9,7 @@ export type JudgeInput = {
   timeLimitMs: number;
   memoryLimitMb: number;
   samplesOnly: boolean;
+  outputChecker?: OutputChecker;
 };
 
 export type JudgeOutput = {
