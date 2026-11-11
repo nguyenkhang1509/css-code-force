@@ -25,7 +25,7 @@ begin
   if v_problem_id is null then
     if exists(select 1 from public.problems where id=v_reserved_id) then
       insert into public.problems(slug,title,section,difficulty,statement,input_format,output_format,constraints,time_limit_ms,memory_limit_mb,published)
-      values('code-quest-tryouts-registration-order','Code Quest Tryouts: Registration Order','Code Quest Tryout','Medium',
+      values('code-quest-tryouts-registration-order','Code Quest Tryouts: Registration Order','Code Quest Tryout','Easy',
         $statement$The Computer Science Society (CSS) is preparing the registration list for the Code Quest tryouts.
 
 There are $n$ registered students, each assigned a distinct registration ID. Before the tryouts begin, CSS needs the IDs arranged in strictly increasing order.
@@ -50,7 +50,7 @@ The second line contains $n$ distinct integers $a_1, a_2, \ldots, a_n$ ($1 \le a
       returning id into v_problem_id;
     else
       insert into public.problems(id,slug,title,section,difficulty,statement,input_format,output_format,constraints,time_limit_ms,memory_limit_mb,published)
-      values(v_reserved_id,'code-quest-tryouts-registration-order','Code Quest Tryouts: Registration Order','Code Quest Tryout','Medium',
+      values(v_reserved_id,'code-quest-tryouts-registration-order','Code Quest Tryouts: Registration Order','Easy',
         $statement$The Computer Science Society (CSS) is preparing the registration list for the Code Quest tryouts.
 
 There are $n$ registered students, each assigned a distinct registration ID. Before the tryouts begin, CSS needs the IDs arranged in strictly increasing order.
@@ -77,7 +77,7 @@ The second line contains $n$ distinct integers $a_1, a_2, \ldots, a_n$ ($1 \le a
   else
     update public.problems set
       slug='code-quest-tryouts-registration-order',title='Code Quest Tryouts: Registration Order',
-      section='Code Quest Tryout',difficulty='Medium',time_limit_ms=1000,memory_limit_mb=256,
+      section='Code Quest Tryout',difficulty='Easy',time_limit_ms=1000,memory_limit_mb=256,
       published=true,updated_at=now()
     where id=v_problem_id;
   end if;

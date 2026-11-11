@@ -64,7 +64,7 @@ test("all required maximum-size input patterns have the expected feasibility", (
 test("the seed places an untagged 40-case problem in Code Quest with a private custom checker", async () => {
   const migration = await readFile(new URL("../supabase/migrations/202611100005_registration_order.sql", import.meta.url), "utf8");
   assert.match(migration, /Code Quest Tryouts: Registration Order/);
-  assert.match(migration, /'Code Quest Tryout'[\s,\n]+\s*'Medium'/);
+  assert.match(migration, /'Code Quest Tryout'[\s,\n]+\s*'Easy'/);
   assert.match(migration, /'code-quest-tryouts-registration-order'/);
   assert.match(migration, /40 official test cases: four public examples, 31 small hidden cases, and five large hidden cases/i);
   assert.match(migration, /delete from public\.problem_tags where problem_id\s*=\s*v_problem_id/i);

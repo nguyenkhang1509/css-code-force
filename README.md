@@ -105,7 +105,7 @@ Run `supabase/migrations/202611100004_code_quest_leaderboard.sql` after the sect
 
 ### Add Code Quest Tryouts: Registration Order
 
-Run `supabase/migrations/202611100005_registration_order.sql` after `202611100001_code_quest_tryout_score_audit.sql`. It adds an untagged Medium problem with four public samples and 36 hidden tests. Its private checker accepts any valid reversal answer, including any single-element segment for an already sorted input; other problems continue to use exact output comparison. The migration reserves problem ID `a0000000-0000-4000-8000-000000000006` when it is available.
+Run `supabase/migrations/202611100005_registration_order.sql` after `202611100001_code_quest_tryout_score_audit.sql`. It adds an untagged Easy problem with four public samples and 36 hidden tests. Its private checker accepts any valid reversal answer, including any single-element segment for an already sorted input; other problems continue to use exact output comparison. The migration reserves problem ID `a0000000-0000-4000-8000-000000000006` when it is available. If migration `202611100005` was already run, run `202611100006_registration_order_easy.sql` to update the existing problem's difficulty without replacing its tests or submissions.
 
 ## Judge design and limits
 
