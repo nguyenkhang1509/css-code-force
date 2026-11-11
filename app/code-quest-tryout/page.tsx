@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Trophy } from "lucide-react";
 import { ProblemTable } from "@/components/problem-table";
+import { Button } from "@/components/ui/button";
 import { getPublishedProblems, getSolvedProblemIds } from "@/lib/data";
 import { getViewer } from "@/lib/auth";
 
@@ -26,10 +29,15 @@ export default async function CodeQuestTryoutPage() {
   const list = problems.map((problem) => ({ ...problem, solved: solved.has(problem.id) }));
   return (
     <section className="container section">
-      <div style={{ marginBottom: 24 }}>
-        <div className="eyebrow">Competition practice</div>
-        <h1 className="page-heading">Code Quest Tryout</h1>
-        <p className="page-subtitle">Practice problems prepared for the Lockheed Martin Code Quest tryouts.</p>
+      <div className="section-title-row">
+        <div>
+          <div className="eyebrow">Competition practice</div>
+          <h1 className="page-heading">Code Quest Tryout</h1>
+          <p className="page-subtitle">Practice problems prepared for the Lockheed Martin Code Quest tryouts.</p>
+        </div>
+        <Link href="/code-quest-tryout/leaderboard">
+          <Button variant="secondary"><Trophy size={15} /> Tryout leaderboard</Button>
+        </Link>
       </div>
       {error && <div className="alert" style={{ marginBottom: 16 }}>Could not load tryout problems. Apply the latest Supabase migration and refresh.</div>}
       <ProblemTable problems={list} showTopics={false} />

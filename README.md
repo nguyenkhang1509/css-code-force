@@ -91,6 +91,18 @@ The new problem has 34 official tests: 2 public examples and 32 hidden cases, in
 
 Run `npm run test:problem` to verify both the earlier statistics problem and Score Audit fixtures. The Score Audit tests compare all 29 small hidden seed fixtures against a separate brute-force implementation and check 1,000 deterministic random cases.
 
+### Add Code Quest Tryouts: Table Assignment
+
+Run `supabase/migrations/202611100002_table_assignment.sql` after the section migration above. It adds **Code Quest Tryouts: Table Assignment** to `/code-quest-tryout` with no tags, two public samples, and 29 hidden cases, including five maximum-size inputs. The private Python and C++ reference implementations remain unavailable to students. Its problem ID uses the existing UUID `a0000000-0000-4000-8000-000000000005` when available.
+
+The next migration, `supabase/migrations/202611100003_unique_leaderboard_attempts.sql`, backfills solved progress from verified Accepted submissions and updates the leaderboard to count unique problems attempted and unique problems solved. It preserves the complete submission history. Apply both new migrations in the Supabase SQL Editor, in numeric order, before deploying the code.
+
+`npm run test:problem` also compares the table-counting reference rule against exhaustive packing on the fixed fixtures and 1,000 deterministic randomized small inputs.
+
+### Code Quest Tryout leaderboard
+
+Run `supabase/migrations/202611100004_code_quest_leaderboard.sql` after the section migration. The new page at `/code-quest-tryout/leaderboard` uses the same layout as the general leaderboard, but counts only problems in the **Code Quest Tryout** section. A student appears only after an Accepted tryout submission; the solved and attempted totals each count a tryout problem at most once. The general `/leaderboard` remains separate.
+
 ## Judge design and limits
 
 `lib/judge/types.ts` defines the replaceable `JudgeProvider` boundary. `VercelSandboxJudge` creates a new disposable Sandbox for each run or submission. Python sandboxes start with outbound networking denied. If `VERCEL_SANDBOX_SNAPSHOT_ID` is set, it restores the prepared Python/C++ runtime with networking denied. Local development can install `g++` when needed; a Vercel deployment without the prepared snapshot returns a setup error instead of spending a submission installing the compiler. No app credentials or hidden cases enter student code.
